@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, Calendar, User, Mail, Phone, Activity } from "lucide-react"
+import { ArrowLeft, User, Mail, Phone, Activity } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -17,12 +17,7 @@ interface Patient {
 
 interface Reading {
   id: string
-  patientId: string
-  date: string
-  duration: number
-  stepCount: number
-  avgCadence: number
-  sensorData: any[]
+  file_path?: string
 }
 
 interface PatientDetailProps {
@@ -39,9 +34,10 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
       try {
         const response = await fetch(`/api/patients/${patientId}`)
         const result = await response.json()
+        console.log(result)
         if (result.success) {
-          setPatient(result.data.patient)
-          setReadings(result.data.readings)
+          setPatient(result.data.patient.data)
+          setReadings(result.data.readings.data)
         }
       } catch (error) {
         console.error("Failed to fetch patient data:", error)
@@ -111,11 +107,7 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
               <span className="font-medium">Email:</span>
               <span>{patient.email}</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Phone className="h-4 w-4 text-gray-500" />
-              <span className="font-medium">Phone:</span>
-              <span>{patient.phone}</span>
-            </div>
+           
             <div className="flex items-center gap-2">
               <Activity className="h-4 w-4 text-gray-500" />
               <span className="font-medium">Total Readings:</span>
@@ -139,24 +131,14 @@ export function PatientDetail({ patientId }: PatientDetailProps) {
               {readings.map((reading) => (
                 <Link key={reading.id} href={`/readings/${reading.id}`}>
                   <Card className="hover:shadow-md transition-shadow cursor-pointer">
-                    <CardContent className="p-4">
-                      <div className="flex justify-between items-center">
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-500" />
-                            <span className="font-medium">{new Date(reading.date).toLocaleDateString()}</span>
-                          </div>
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                            <span>Duration: {reading.duration}s</span>
-                            <span>Steps: {reading.stepCount}</span>
-                            <span>Cadence: {reading.avgCadence}/min</span>
-                            <span>Samples: {reading.sensorData?.length || 0}</span>
-                          </div>
-                        </div>
-                        <Button variant="outline" size="sm">
-                          View Analysis
-                        </Button>
-                      </div>
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <span className="font-medium">Reading ID: {reading.id}</span>
+                      {reading.file_path && (
+                        <span className="text-xs text-gray-500">{reading.file_path}</span>
+                      )}
+                      <Button variant="outline" size="sm">
+                        View Analysis
+                      </Button>
                     </CardContent>
                   </Card>
                 </Link>

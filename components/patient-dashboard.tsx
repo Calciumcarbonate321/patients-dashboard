@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Plus, User, Calendar, Phone, Mail } from "lucide-react"
+import { Plus, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -10,11 +10,8 @@ import { Badge } from "@/components/ui/badge"
 interface Patient {
   id: string
   name: string
-  age: number
-  email: string
-  phone: string
-  lastVisit: string
-  readingsCount: number
+  readings_count: number
+  created_at: string
 }
 
 export function PatientDashboard() {
@@ -69,31 +66,46 @@ export function PatientDashboard() {
       <div className="container mx-auto px-6 py-8">
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {patients.map((patient) => (
-            <Link key={patient.id} href={`/patients/${patient.id}`}>
-              <Card className="hover:shadow-md transition-shadow cursor-pointer">
+            <Link key={patient.id} href={`/patients/${patient.id}`} className="block">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer relative group">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <User className="h-5 w-5" />
                       {patient.name}
                     </CardTitle>
-                    <Badge variant="secondary">{patient.readingsCount} sessions</Badge>
+                    <Badge variant="secondary">{patient.readings_count} sessions</Badge>
                   </div>
-                  <CardDescription>Age: {patient.age}</CardDescription>
+                  <div className="text-sm text-gray-600 mt-1">Patient ID: {patient.id}</div>
                 </CardHeader>
-                <CardContent className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Mail className="h-4 w-4" />
-                    {patient.email}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Phone className="h-4 w-4" />
-                    {patient.phone}
-                  </div>
-                  <div className="flex items-center gap-2 text-sm text-gray-600">
-                    <Calendar className="h-4 w-4" />
-                    Last visit: {new Date(patient.lastVisit).toLocaleDateString()}
-                  </div>
+                <CardContent className="space-y-2 relative min-h-[48px] pb-10">
+                  <Button
+                    variant="destructive"
+                    size="sm"
+                    className="fixed-card-delete transition-transform duration-150 hover:scale-105 hover:shadow-lg cursor-pointer"
+                    style={{ position: 'absolute', right: '1rem', bottom: '1rem', zIndex: 10 }}
+                    onClick={async (e) => {
+                      e.preventDefault();
+                      if (confirm(`Are you sure you want to delete patient '${patient.name}'?`)) {
+                        setLoading(true);
+                        try {
+                          const res = await fetch(`/api/patients/${patient.id}`, { method: 'DELETE' });
+                          const result = await res.json();
+                          if (result.success) {
+                            setPatients((prev) => prev.filter((p) => p.id !== patient.id));
+                          } else {
+                            alert(result.error || 'Failed to delete patient.');
+                          }
+                        } catch (err) {
+                          alert('Failed to delete patient.');
+                        } finally {
+                          setLoading(false);
+                        }
+                      }
+                    }}
+                  >
+                    Delete
+                  </Button>
                 </CardContent>
               </Card>
             </Link>

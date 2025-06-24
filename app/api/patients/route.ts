@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { supabase } from "@/lib/supabase"
 
 // Mock patient data
 const patients = [
@@ -52,10 +53,11 @@ const patients = [
 export async function GET() {
   // Simulate API delay
   await new Promise((resolve) => setTimeout(resolve, 500))
-
+  const patients = await supabase.from('patients').select('*')
+  console.log(patients)
   return NextResponse.json({
     success: true,
-    data: patients,
+    data: patients.data,
   })
 }
 
@@ -64,20 +66,22 @@ export async function POST(request: Request) {
     const body = await request.json()
 
     const newPatient = {
-      id: (patients.length + 1).toString(),
       name: body.name,
       age: body.age,
       email: body.email,
-      phone: body.phone,
-      lastVisit: new Date().toISOString().split("T")[0],
-      readingsCount: 0,
+      readings_count: 0,
     }
 
-    patients.push(newPatient)
+    const res = await supabase.from('patients').insert(newPatient).select().single()
+    console.log(res)
+
+    if (res.error) {
+      return NextResponse.json({ success: false, error: res.error.message }, { status: 500 })
+    }
 
     return NextResponse.json({
       success: true,
-      data: newPatient,
+      data: res.data,
     })
   } catch (error) {
     return NextResponse.json({ success: false, error: "Failed to create patient" }, { status: 500 })

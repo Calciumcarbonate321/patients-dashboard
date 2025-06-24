@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { supabase } from "@/lib/supabase"
 
 // Generate mock sensor data with timestamps
 function generateSensorData(count: number, startTime: Date) {
@@ -119,19 +120,19 @@ const allReadings = [
 ]
 
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params
+  const { id: readingId } = await params
 
-  // Simulate API delay
-  await new Promise((resolve) => setTimeout(resolve, 200))
+  // Query the readings table for all readings with this patient id
+  const { data, error } = await supabase.from("readings").select("file_path").eq("id", readingId)
 
-  const reading = allReadings.find((r) => r.id === id)
-
-  if (!reading) {
-    return NextResponse.json({ success: false, error: "Reading not found" }, { status: 404 })
+  if (error) {
+    return NextResponse.json({ success: false, error: error.message }, { status: 500 })
   }
 
+  // Extract ids as array
+  const url = supabase.storage.from("readings").getPublicUrl(data[0].file_path)
   return NextResponse.json({
     success: true,
-    data: reading,
+    url: url.data.publicUrl,
   })
 }

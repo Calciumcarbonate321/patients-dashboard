@@ -19,7 +19,6 @@ export function AddPatientForm() {
     name: "",
     age: "",
     email: "",
-    phone: "",
   })
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -122,18 +121,6 @@ export function AddPatientForm() {
                 value={formData.email}
                 onChange={handleChange}
                 placeholder="Enter patient's email address"
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input
-                id="phone"
-                name="phone"
-                type="tel"
-                value={formData.phone}
-                onChange={handleChange}
-                placeholder="Enter patient's phone number"
                 required
               />
             </div>

@@ -23,15 +23,7 @@ interface SensorReading {
 
 interface Reading {
   id: string
-  patientId: string
-  patientName: string
-  date: string
-  timestamp: string
-  duration: number
-  stepCount: number
-  avgCadence: number
-  sessionNotes?: string
-  sensorData: SensorReading[]
+  url: string // URL to the CSV file
 }
 
 interface ReadingDetailProps {
@@ -40,7 +32,7 @@ interface ReadingDetailProps {
 
 export function ReadingDetail({ readingId }: ReadingDetailProps) {
   const [reading, setReading] = useState<Reading | null>(null)
-  const [allReadings, setAllReadings] = useState<Reading[]>([])
+  const [imuData, setImuData] = useState<SensorReading[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -48,14 +40,43 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
       try {
         const response = await fetch(`/api/readings/${readingId}`)
         const result = await response.json()
+        setReading(result)
+        console.log(result)
         if (result.success) {
-          setReading(result.data)
-
-          // Fetch all readings for this patient
-          const patientResponse = await fetch(`/api/patients/${result.data.patientId}`)
-          const patientResult = await patientResponse.json()
-          if (patientResult.success) {
-            setAllReadings(patientResult.data.readings)
+          // Fetch and parse CSV if url exists
+          if (result.url) {
+            const csvRes = await fetch(result.url)
+            const csvText = await csvRes.text()
+            // Provide correct headers since CSV has no header row
+            const headers = [
+              'accelerometerX',
+              'accelerometerY',
+              'accelerometerZ',
+              'gyroscopeX',
+              'gyroscopeY',
+              'gyroscopeZ',
+            ]
+            const lines = csvText.trim().split(/\r?\n/)
+            if (lines.length > 0) {
+              console.log('First CSV Row:', lines[0])
+            }
+            const data = lines.map(line => {
+              const values = line.split(',')
+              const obj: any = {}
+              headers.forEach((h, i) => { obj[h] = values[i]?.trim() })
+              // Convert numeric fields
+              obj.accelerometerX = parseFloat(obj.accelerometerX)
+              obj.accelerometerY = parseFloat(obj.accelerometerY)
+              obj.accelerometerZ = parseFloat(obj.accelerometerZ)
+              obj.gyroscopeX = parseFloat(obj.gyroscopeX)
+              obj.gyroscopeY = parseFloat(obj.gyroscopeY)
+              obj.gyroscopeZ = parseFloat(obj.gyroscopeZ)
+              // Add a fake timestamp (index-based) if needed
+              obj.timestamp = String(new Date(Date.now() + lines.indexOf(line) * 100).toISOString())
+              return obj as SensorReading
+            })
+            console.log("Parsed IMU Data:", data)
+            setImuData(data)
           }
         }
       } catch (error) {
@@ -64,7 +85,6 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
         setLoading(false)
       }
     }
-
     fetchReading()
   }, [readingId])
 
@@ -90,7 +110,7 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
   }
 
   // Prepare chart data
-  const chartData = reading.sensorData.map((data, index) => ({
+  const chartData = imuData.map((data, index) => ({
     time: index * 0.1, // Assuming 10Hz sampling rate
     accX: data.accelerometerX,
     accY: data.accelerometerY,
@@ -100,75 +120,9 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
     gyroZ: data.gyroscopeZ,
   }))
 
-  const summaryStats = [
-    {
-      label: "Session Duration",
-      value: reading.duration,
-      unit: "seconds",
-      icon: Timer,
-    },
-    {
-      label: "Step Count",
-      value: reading.stepCount,
-      unit: "steps",
-      icon: Footprints,
-    },
-    {
-      label: "Average Cadence",
-      value: reading.avgCadence,
-      unit: "steps/min",
-      icon: Activity,
-    },
-    {
-      label: "Data Points",
-      value: reading.sensorData.length,
-      unit: "samples",
-      icon: BarChart3,
-    },
-  ]
-
   return (
     <div className="min-h-screen bg-gray-50">
-      <div className="bg-white border-b">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" asChild>
-              <Link href={`/patients/${reading.patientId}`}>
-                <ArrowLeft className="h-4 w-4" />
-              </Link>
-            </Button>
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">IMU Gait Reading</h1>
-              <p className="text-gray-600">
-                {reading.patientName} • {new Date(reading.date).toLocaleDateString()}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div className="container mx-auto px-6 py-8 space-y-8">
-        {/* Summary Statistics */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {summaryStats.map((stat) => {
-            const Icon = stat.icon
-            return (
-              <Card key={stat.label}>
-                <CardContent className="p-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Icon className="h-4 w-4 text-gray-600" />
-                    <span className="text-sm font-medium text-gray-600">{stat.label}</span>
-                  </div>
-                  <div className="text-2xl font-bold text-gray-900">
-                    {stat.value}
-                    <span className="text-sm font-normal text-gray-600 ml-1">{stat.unit}</span>
-                  </div>
-                </CardContent>
-              </Card>
-            )
-          })}
-        </div>
-
         {/* IMU Charts */}
         <Card>
           <CardHeader>
@@ -181,118 +135,69 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Tabs defaultValue="accelerometer" className="space-y-4">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="accelerometer">Accelerometer</TabsTrigger>
-                <TabsTrigger value="gyroscope">Gyroscope</TabsTrigger>
-              </TabsList>
-
-              <TabsContent value="accelerometer" className="space-y-4">
-                <ChartContainer
-                  config={{
-                    accX: {
-                      label: "X-Axis",
-                      color: "hsl(var(--chart-1))",
-                    },
-                    accY: {
-                      label: "Y-Axis",
-                      color: "hsl(var(--chart-2))",
-                    },
-                    accZ: {
-                      label: "Z-Axis",
-                      color: "hsl(var(--chart-3))",
-                    },
-                  }}
-                  className="h-[400px]"
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" label={{ value: "Time (s)", position: "insideBottom", offset: -5 }} />
-                      <YAxis label={{ value: "Acceleration (m/s²)", angle: -90, position: "insideLeft" }} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line
-                        type="monotone"
-                        dataKey="accX"
-                        stroke="#8884d8"
-                        name="X-Axis"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="accY"
-                        stroke="#82ca9d"
-                        name="Y-Axis"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="accZ"
-                        stroke="#ffc658"
-                        name="Z-Axis"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </TabsContent>
-
-              <TabsContent value="gyroscope" className="space-y-4">
-                <ChartContainer
-                  config={{
-                    gyroX: {
-                      label: "X-Axis",
-                      color: "hsl(var(--chart-4))",
-                    },
-                    gyroY: {
-                      label: "Y-Axis",
-                      color: "hsl(var(--chart-5))",
-                    },
-                    gyroZ: {
-                      label: "Z-Axis",
-                      color: "hsl(var(--chart-1))",
-                    },
-                  }}
-                  className="h-[400px]"
-                >
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={chartData}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="time" label={{ value: "Time (s)", position: "insideBottom", offset: -5 }} />
-                      <YAxis label={{ value: "Angular Velocity (rad/s)", angle: -90, position: "insideLeft" }} />
-                      <ChartTooltip content={<ChartTooltipContent />} />
-                      <Line
-                        type="monotone"
-                        dataKey="gyroX"
-                        stroke="#ff7300"
-                        name="X-Axis"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="gyroY"
-                        stroke="#387908"
-                        name="Y-Axis"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="gyroZ"
-                        stroke="#003f5c"
-                        name="Z-Axis"
-                        strokeWidth={2}
-                        dot={false}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </ChartContainer>
-              </TabsContent>
-            </Tabs>
+            <div className="w-full overflow-x-auto">
+              <div className="min-w-[600px]">
+                {/* Legend */}
+                <div className="flex gap-6 mb-4 flex-wrap">
+                  <div className="flex items-center gap-2"><span className="inline-block w-4 h-1 rounded bg-[#ff0000]"></span>Acc X</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-4 h-1 rounded bg-[#00b894]"></span>Acc Y</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-4 h-1 rounded bg-[#0984e3]"></span>Acc Z</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-4 h-1 rounded bg-[#fdcb6e]"></span>Gyro X</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-4 h-1 rounded bg-[#6c5ce7]"></span>Gyro Y</div>
+                  <div className="flex items-center gap-2"><span className="inline-block w-4 h-1 rounded bg-[#636e72]"></span>Gyro Z</div>
+                </div>
+                <Tabs defaultValue="accelerometer" className="space-y-4">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="accelerometer">Accelerometer</TabsTrigger>
+                    <TabsTrigger value="gyroscope">Gyroscope</TabsTrigger>
+                  </TabsList>
+                  <TabsContent value="accelerometer" className="space-y-4">
+                    <ChartContainer
+                      config={{
+                        accX: { label: "X-Axis", color: "#ff0000" },
+                        accY: { label: "Y-Axis", color: "#00b894" },
+                        accZ: { label: "Z-Axis", color: "#0984e3" },
+                      }}
+                      className="h-[400px] w-full"
+                    >
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="time" label={{ value: "Time (s)", position: "insideBottom", offset: -5 }} />
+                          <YAxis label={{ value: "Acceleration (m/s²)", angle: -90, position: "insideLeft" }} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Line type="monotone" dataKey="accX" stroke="#ff0000" name="X-Axis" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="accY" stroke="#00b894" name="Y-Axis" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="accZ" stroke="#0984e3" name="Z-Axis" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </ChartContainer>
+                  </TabsContent>
+                  <TabsContent value="gyroscope" className="space-y-4">
+                    <ChartContainer
+                      config={{
+                        gyroX: { label: "X-Axis", color: "#fdcb6e" },
+                        gyroY: { label: "Y-Axis", color: "#6c5ce7" },
+                        gyroZ: { label: "Z-Axis", color: "#636e72" },
+                      }}
+                      className="h-[400px] w-full"
+                    >
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="time" label={{ value: "Time (s)", position: "insideBottom", offset: -5 }} />
+                          <YAxis label={{ value: "Angular Velocity (rad/s)", angle: -90, position: "insideLeft" }} />
+                          <ChartTooltip content={<ChartTooltipContent />} />
+                          <Line type="monotone" dataKey="gyroX" stroke="#fdcb6e" name="X-Axis" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="gyroY" stroke="#6c5ce7" name="Y-Axis" strokeWidth={2} dot={false} />
+                          <Line type="monotone" dataKey="gyroZ" stroke="#636e72" name="Z-Axis" strokeWidth={2} dot={false} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </ChartContainer>
+                  </TabsContent>
+                </Tabs>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
@@ -320,7 +225,7 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {reading.sensorData.map((data, index) => (
+                  {imuData.map((data, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-mono text-sm">{data.timestamp}</TableCell>
                       <TableCell className="text-right font-mono">{data.accelerometerX.toFixed(3)}</TableCell>
@@ -335,115 +240,7 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
               </Table>
             </div>
             <div className="mt-4 text-sm text-gray-600">
-              Showing {reading.sensorData.length} sensor readings from this session
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* All Patient Readings List */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Patient Reading History
-            </CardTitle>
-            <CardDescription>All IMU gait monitoring sessions for {reading.patientName}</CardDescription>
-          </CardHeader>
-          <CardContent>
-            {allReadings.length === 0 ? (
-              <div className="text-center py-12">
-                <Activity className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <h3 className="text-lg font-semibold text-gray-600">No readings available</h3>
-                <p className="text-gray-500">No IMU gait readings have been recorded yet.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {allReadings.map((r, index) => (
-                  <Link key={r.id} href={`/readings/${r.id}`}>
-                    <Card
-                      className={`transition-all duration-200 hover:shadow-md cursor-pointer ${
-                        r.id === reading.id ? "bg-blue-50 border-blue-200" : "hover:bg-gray-50"
-                      }`}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex justify-between items-center">
-                          <div className="space-y-2">
-                            <div className="flex items-center gap-3">
-                              <Badge variant={r.id === reading.id ? "default" : "secondary"}>
-                                Session #{allReadings.length - index}
-                              </Badge>
-                              <div className="flex items-center gap-2 text-sm font-medium">
-                                <Calendar className="h-4 w-4 text-gray-500" />
-                                {new Date(r.date).toLocaleDateString()}
-                              </div>
-                              {r.id === reading.id && (
-                                <Badge variant="outline" className="text-blue-600 border-blue-300">
-                                  Current
-                                </Badge>
-                              )}
-                            </div>
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm text-gray-600">
-                              <span>
-                                Duration: <strong>{r.duration}s</strong>
-                              </span>
-                              <span>
-                                Steps: <strong>{r.stepCount}</strong>
-                              </span>
-                              <span>
-                                Cadence: <strong>{r.avgCadence}/min</strong>
-                              </span>
-                              <span>
-                                Samples: <strong>{r.sensorData?.length || 0}</strong>
-                              </span>
-                            </div>
-                          </div>
-                          <Button variant={r.id === reading.id ? "default" : "outline"} size="sm">
-                            {r.id === reading.id ? "Current Session" : "View Analysis"}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Session Information */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <User className="h-5 w-5" />
-              Session Information
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <div>
-                <p className="font-medium text-gray-900">{reading.patientName}</p>
-                <p className="text-sm text-gray-600">Patient ID: {reading.patientId}</p>
-              </div>
-              <div>
-                <p className="font-medium text-gray-900">Session Date & Time</p>
-                <p className="text-sm text-gray-600">{new Date(reading.timestamp).toLocaleString()}</p>
-              </div>
-            </div>
-
-            {reading.sessionNotes && (
-              <div>
-                <p className="font-medium text-gray-900 mb-2">Session Notes</p>
-                <p className="text-sm text-gray-600 bg-gray-50 p-3 rounded-md">{reading.sessionNotes}</p>
-              </div>
-            )}
-
-            <div className="flex gap-3 pt-4">
-              <Button variant="outline" asChild>
-                <Link href={`/patients/${reading.patientId}`}>View Patient Profile</Link>
-              </Button>
-              <Badge variant="secondary" className="px-3 py-1">
-                Reading ID: {reading.id}
-              </Badge>
+              Showing {imuData.length} sensor readings from this session
             </div>
           </CardContent>
         </Card>
