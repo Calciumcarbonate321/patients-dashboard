@@ -54,15 +54,6 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
           if (result.url) {
             const csvRes = await fetch(result.url)
             const csvText = await csvRes.text()
-            // Provide correct headers since CSV has no header row
-            const headers = [
-              'accelerometerX',
-              'accelerometerY',
-              'accelerometerZ',
-              'gyroscopeX',
-              'gyroscopeY',
-              'gyroscopeZ',
-            ]
             const lines = csvText.trim().split(/\r?\n/)
             if (lines.length > 0) {
               console.log('First CSV Row:', lines[0])

@@ -1,6 +1,10 @@
 import { NextResponse } from "next/server"
 import { supabase } from "@/lib/supabase"
 
+interface ReadingRow {
+  file_path: string
+}
+
 export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
 
@@ -32,7 +36,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
     return NextResponse.json({ success: false, error: readingError.message }, { status: 500 })
   }
   if (readingRows && readingRows.length > 0) {
-    const filePaths = readingRows.map((row: any) => row.file_path).filter(Boolean)
+    const filePaths = (readingRows as ReadingRow[]).map((row) => row.file_path).filter(Boolean)
     if (filePaths.length > 0) {
       const { error: storageError } = await supabase.storage.from('readings').remove(filePaths)
       if (storageError) {
