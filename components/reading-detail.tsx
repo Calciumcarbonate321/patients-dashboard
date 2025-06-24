@@ -233,12 +233,12 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
                   {imuData.map((data, index) => (
                     <TableRow key={index}>
                       <TableCell className="font-mono text-sm">{data.timestamp}</TableCell>
-                      <TableCell className="text-right font-mono">{data.accelerometerX.toFixed(3)}</TableCell>
-                      <TableCell className="text-right font-mono">{data.accelerometerY.toFixed(3)}</TableCell>
-                      <TableCell className="text-right font-mono">{data.accelerometerZ.toFixed(3)}</TableCell>
-                      <TableCell className="text-right font-mono">{data.gyroscopeX.toFixed(3)}</TableCell>
-                      <TableCell className="text-right font-mono">{data.gyroscopeY.toFixed(3)}</TableCell>
-                      <TableCell className="text-right font-mono">{data.gyroscopeZ.toFixed(3)}</TableCell>
+                      <TableCell className="text-right font-mono">{data.accelerometerX}</TableCell>
+                      <TableCell className="text-right font-mono">{data.accelerometerY}</TableCell>
+                      <TableCell className="text-right font-mono">{data.accelerometerZ}</TableCell>
+                      <TableCell className="text-right font-mono">{data.gyroscopeX}</TableCell>
+                      <TableCell className="text-right font-mono">{data.gyroscopeY}</TableCell>
+                      <TableCell className="text-right font-mono">{data.gyroscopeZ}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
