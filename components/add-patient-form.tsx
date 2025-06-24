@@ -49,6 +49,7 @@ export function AddPatientForm() {
         throw new Error(result.error || "Failed to add patient")
       }
     } catch (error) {
+      console.error("Error adding patient:", error)
       toast.error(
         "Error",{
         description: "Failed to add patient. Please try again.",
@@ -81,7 +82,7 @@ export function AddPatientForm() {
             <User className="h-5 w-5" />
             Patient Information
           </CardTitle>
-          <CardDescription>Enter the patient's basic information to create their profile.</CardDescription>
+          <CardDescription>Enter the patient&#39;s basic information to create their profile.</CardDescription>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import { Plus, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 
 interface Patient {
@@ -97,6 +97,7 @@ export function PatientDashboard() {
                             alert(result.error || 'Failed to delete patient.');
                           }
                         } catch (err) {
+                          console.error('Error deleting patient:', err);
                           alert('Failed to delete patient.');
                         } finally {
                           setLoading(false);

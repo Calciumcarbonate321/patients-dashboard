@@ -17,7 +17,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ success: false, error: error.message }, { status: 500 });
 
     }
-    const res = await supabase.from('readings').insert({patient_id:patientId, file_path: filePath})
+    await supabase.from('readings').insert({patient_id:patientId, file_path: filePath})
     // Increment readings_count
     const { data: patient, error: patientError } = await supabase.from('patients').select('readings_count').eq('id', patientId).single();
     if (!patientError && patient) {

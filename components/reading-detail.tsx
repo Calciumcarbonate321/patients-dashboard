@@ -1,11 +1,8 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import Link from "next/link"
-import { ArrowLeft, User, Activity, BarChart3, Timer, Footprints, Calendar } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Activity, BarChart3 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Line, LineChart, XAxis, YAxis, CartesianGrid, ResponsiveContainer } from "recharts"
@@ -28,6 +25,16 @@ interface Reading {
 
 interface ReadingDetailProps {
   readingId: string
+}
+
+interface ParsedCsvRow {
+  accelerometerX: string
+  accelerometerY: string
+  accelerometerZ: string
+  gyroscopeX: string
+  gyroscopeY: string
+  gyroscopeZ: string
+  timestamp?: string
 }
 
 export function ReadingDetail({ readingId }: ReadingDetailProps) {
@@ -62,18 +69,25 @@ export function ReadingDetail({ readingId }: ReadingDetailProps) {
             }
             const data = lines.map(line => {
               const values = line.split(',')
-              const obj: any = {}
-              headers.forEach((h, i) => { obj[h] = values[i]?.trim() })
+              const obj: ParsedCsvRow = {
+                accelerometerX: values[0]?.trim() ?? '',
+                accelerometerY: values[1]?.trim() ?? '',
+                accelerometerZ: values[2]?.trim() ?? '',
+                gyroscopeX: values[3]?.trim() ?? '',
+                gyroscopeY: values[4]?.trim() ?? '',
+                gyroscopeZ: values[5]?.trim() ?? '',
+                // timestamp will be added below
+              }
               // Convert numeric fields
-              obj.accelerometerX = parseFloat(obj.accelerometerX)
-              obj.accelerometerY = parseFloat(obj.accelerometerY)
-              obj.accelerometerZ = parseFloat(obj.accelerometerZ)
-              obj.gyroscopeX = parseFloat(obj.gyroscopeX)
-              obj.gyroscopeY = parseFloat(obj.gyroscopeY)
-              obj.gyroscopeZ = parseFloat(obj.gyroscopeZ)
+              obj.accelerometerX = parseFloat(obj.accelerometerX).toString()
+              obj.accelerometerY = parseFloat(obj.accelerometerY).toString()
+              obj.accelerometerZ = parseFloat(obj.accelerometerZ).toString()
+              obj.gyroscopeX = parseFloat(obj.gyroscopeX).toString() 
+              obj.gyroscopeY = parseFloat(obj.gyroscopeY).toString()
+              obj.gyroscopeZ = parseFloat(obj.gyroscopeZ).toString()
               // Add a fake timestamp (index-based) if needed
               obj.timestamp = String(new Date(Date.now() + lines.indexOf(line) * 100).toISOString())
-              return obj as SensorReading
+              return obj as unknown as SensorReading
             })
             console.log("Parsed IMU Data:", data)
             setImuData(data)

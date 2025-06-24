@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { ArrowLeft, User, Mail, Phone, Activity } from "lucide-react"
+import { ArrowLeft, User, Mail, Activity } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -12,7 +12,6 @@ interface Patient {
   name: string
   age: number
   email: string
-  phone: string
 }
 
 interface Reading {
